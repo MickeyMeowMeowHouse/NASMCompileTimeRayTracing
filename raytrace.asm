@@ -139,7 +139,7 @@ BITMAPINFOHEADER:
 	%assign result result * SqrtBase
 %endmacro
 
-%define Mix(x, y, a) FixedMul((x), FixedBase - (a)) + FixedMul((y), (a))
+%define Mix(x,y,a) FixedMul((x), FixedBase - (a)) + FixedMul((y), (a))
 
 %macro Min 2
 	%if %1 < %2
@@ -303,6 +303,8 @@ BITMAPINFOHEADER:
 %assign SkyColor_g FixedDiv(5, 10)
 %assign SkyColor_b FixedDiv(8, 10)
 
+%assign FogDistance MakeFixed(50)
+
 %if GroundOnly
 	%assign Sphere1_Visible 0
 	%assign Sphere2_Visible 0
@@ -446,14 +448,14 @@ Normalize LightDir_x, LightDir_y, LightDir_z
 	%elif result_index == 2
 		%assign result_r FixedDiv(192,256)
 		%assign result_g FixedDiv(256,256)
-		%assign result_b 0
+		%assign result_b FixedDiv(32,256)
 	%elif result_index == 3
-		%assign result_r 0
+		%assign result_r FixedDiv(32,256)
 		%assign result_g FixedDiv(192,256)
 		%assign result_b FixedDiv(256,256)
 	%elif result_index == 4
 		%assign result_r FixedDiv(256,256)
-		%assign result_g 0
+		%assign result_g FixedDiv(32,256)
 		%assign result_b FixedDiv(192,256)
 	%elif result_index == 5
 		%assign result_r FixedDiv(5, 10)
@@ -527,6 +529,10 @@ Normalize LightDir_x, LightDir_y, LightDir_z
 			%assign %%cast_x %%cro_x + FixedMul(%%crd_x, result)
 			%assign %%cast_y %%cro_y + FixedMul(%%crd_y, result)
 			%assign %%cast_z %%cro_z + FixedMul(%%crd_z, result)
+			%assign %%foggy FixedDiv(result, FogDistance)
+			%if %%foggy > FixedBase
+				%assign %%foggy FixedBase
+			%endif
 			Map_Normal %%cast_x, %%cast_y, %%cast_z
 			%assign %%cast_nx result_x
 			%assign %%cast_ny result_y
@@ -535,6 +541,9 @@ Normalize LightDir_x, LightDir_y, LightDir_z
 			%assign %%mask_r FixedMul(%%mask_r, result_r)
 			%assign %%mask_g FixedMul(%%mask_g, result_g)
 			%assign %%mask_b FixedMul(%%mask_b, result_b)
+			%assign %%mask_r Mix(%%mask_r, FogColor_r, %%foggy)
+			%assign %%mask_g Mix(%%mask_g, FogColor_g, %%foggy)
+			%assign %%mask_b Mix(%%mask_b, FogColor_b, %%foggy)
 
 			%assign %%cro_x %%cast_x
 			%assign %%cro_y %%cast_y
