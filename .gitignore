@@ -1,5 +1,8 @@
 *.bin
 *.mk
+*.log
+parts/
+concat.asm
+preview.asm
 preview.bmp
 raytrace.bmp
-*.log
