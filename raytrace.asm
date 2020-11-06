@@ -15,16 +15,28 @@
 %define LineCount Image_Height
 %endif
 
+%ifndef RowStart
+%define RowStart 0
+%endif
+
+%ifndef RowCount
+%define RowCount Image_Width
+%endif
+
 %ifndef FixedBits
-%define FixedBits 10
+%define FixedBits 16
 %endif
 
 %ifndef RayStepCount
-%define RayStepCount 80
+%define RayStepCount 160
 %endif
 
 %ifndef SampleDepth
-%define SampleDepth 8
+%define SampleDepth 12
+%endif
+
+%ifndef GroundOnly
+%define GroundOnly 0
 %endif
 
 %ifndef No_Header
@@ -58,8 +70,81 @@ BitmapStart:
 %define FixedToInt(i) ((i) // FixedBase)
 %define FixedMul(a,b) (((a) * (b)) // FixedBase)
 %define FixedDiv(a,b) (((a) * FixedBase) // (b))
+
+%assign FixedMax ((-1) / 2)
 %assign CastEpsilon FixedDiv(1, 20)
 %assign CastEpsilon2 FixedDiv(1, 10)
+
+%assign sphere1_x MakeFixed(0)
+%assign sphere1_y MakeFixed(2)
+%assign sphere1_z MakeFixed(0)
+%assign sphere1_r MakeFixed(2)
+%assign sphere1_visible 1
+
+%assign sphere2_x MakeFixed(1)
+%assign sphere2_y MakeFixed(1)
+%assign sphere2_z MakeFixed(2)
+%assign sphere2_r MakeFixed(1)
+%assign sphere2_visible 1
+
+%assign sphere3_x MakeFixed(-3)
+%assign sphere3_y MakeFixed(1)
+%assign sphere3_z MakeFixed(0)
+%assign sphere3_r MakeFixed(1)
+%assign sphere3_visible 1
+
+%assign boundbox_xn MakeFixed(-5)
+%assign boundbox_yn MakeFixed(-1)
+%assign boundbox_zn MakeFixed(-3)
+%assign boundbox_xp MakeFixed(3)
+%assign boundbox_yp MakeFixed(5)
+%assign boundbox_zp MakeFixed(4)
+
+%define isinisde_bb(x,y,z) (((x) >= boundbox_xn) && ((x) <= boundbox_xp) \
+							((y) >= boundbox_yn) && ((y) <= boundbox_yp) \
+							((z) >= boundbox_zn) && ((z) <= boundbox_zp))
+
+%if GroundOnly
+	%assign sphere1_visible 0
+	%assign sphere2_visible 0
+	%assign sphere3_visible 0
+%elif sphere1_visible == 0 && sphere2_visible == 0 && sphere3_visible == 0
+	%assign GroundOnly 1
+%endif
+
+%assign result 0
+%assign result_index 0
+
+%assign result_r 0
+%assign result_g 0
+%assign result_b 0
+
+%assign result_x 0
+%assign result_y 0
+%assign result_z 0
+%assign result_w 0
+
+%macro testawayfrom_bb 6
+%if GroundOnly
+	%assign result 1
+%else
+	%if %1 < boundbox_xn && %4 <= 0
+		%assign result 1
+	%elif %1 > boundbox_xp && %4 >= 0
+		%assign result 1
+	%elif %2 < boundbox_yn && %5 <= 0
+		%assign result 1
+	%elif %2 > boundbox_yp && %5 >= 0
+		%assign result 1
+	%elif %3 < boundbox_zn && %6 <= 0
+		%assign result 1
+	%elif %3 > boundbox_zp && %6 >= 0
+		%assign result 1
+	%else
+		%assign result 0
+	%endif
+%endif
+%endmacro
 
 %macro IntSqrt 1
 	%assign %%sqrt_v_bit 15
@@ -166,20 +251,34 @@ BitmapStart:
 
 %macro Map_Dist 3
 	%assign %%Dist_1 %2
+	%assign %%Dist_4 FixedMax
+	%assign result_index 0
 
-	Distance %1, %2, %3, 0, MakeFixed(2), 0
-	%assign %%Dist_2 result - MakeFixed(2)
+	%if sphere1_visible
+		Distance %1, %2, %3, sphere1_x, sphere1_y, sphere1_z
+		%assign %%Dist_2 result - sphere1_r
+	%else
+		%assign %%Dist_2 FixedMax
+	%endif
 
-	Distance %1, %2, %3, FixedBase, FixedBase, MakeFixed(2)
-	%assign %%Dist_3 result - FixedBase
+	%if sphere2_visible
+		Distance %1, %2, %3, sphere2_x, sphere2_y, sphere2_z
+		%assign %%Dist_3 result - sphere2_r
+	%else
+		%assign %%Dist_3 FixedMax
+	%endif
 
-	Distance %1, %2, %3, MakeFixed(-3), FixedBase, 0
-	%assign %%Dist_4 result - FixedBase
+	%if sphere3_visible
+		Distance %1, %2, %3, sphere3_x, sphere3_y, sphere3_z
+		%assign %%Dist_4 result - sphere3_r
+	%else
+		%assign %%Dist_4 FixedMax
+	%endif
 
-	%assign result (-1) >> 1
+	%assign result FixedMax
 	%if %%Dist_1 < result
 		%assign result %%Dist_1
-		%if ((%1 // (FixedBase / 2)) & 1) ^ ((%3 // (FixedBase / 2)) & 1)
+		%if ((%1 / (FixedBase / 2)) & 1) ^ ((%3 / (FixedBase / 2)) & 1)
 			%assign result_index 1
 		%else
 			%assign result_index 5
@@ -206,19 +305,19 @@ BitmapStart:
 		%assign result_y FixedBase
 		%assign result_z 0
 	%elif result_index == 2
-		%assign %%normal_x %1
-		%assign %%normal_y %2 - MakeFixed(2)
-		%assign %%normal_z %3
+		%assign %%normal_x %1 - sphere1_x
+		%assign %%normal_y %2 - sphere1_y
+		%assign %%normal_z %3 - sphere1_z
 		Normalize %%normal_x, %%normal_y, %%normal_z
 	%elif result_index == 3
-		%assign %%normal_x %1 - FixedBase
-		%assign %%normal_y %2 - FixedBase
-		%assign %%normal_z %3 - MakeFixed(2)
+		%assign %%normal_x %1 - sphere2_x
+		%assign %%normal_y %2 - sphere2_y
+		%assign %%normal_z %3 - sphere2_z
 		Normalize %%normal_x, %%normal_y, %%normal_z
 	%elif result_index == 4
-		%assign %%normal_x %1 - MakeFixed(-3)
-		%assign %%normal_y %2 - FixedBase
-		%assign %%normal_z %3
+		%assign %%normal_x %1 - sphere3_x
+		%assign %%normal_y %2 - sphere3_y
+		%assign %%normal_z %3 - sphere3_z
 		Normalize %%normal_x, %%normal_y, %%normal_z
 	%endif
 %endmacro
@@ -248,17 +347,40 @@ BitmapStart:
 	%endif
 %endmacro
 
+%macro Ground_Cast 6
+	%if %5 == 0
+		%assign result -1
+	%else
+		%assign result FixedDiv(%2, -%5)
+	%endif
+%endmacro
+
 %macro Map_Cast 6
 	%assign %%dist 0
 	%assign %%StepCounter 0
 	%rep RayStepCount
-		%assign %%cur_x %1 + FixedMul(%4, %%dist)
-		%assign %%cur_y %2 + FixedMul(%5, %%dist)
-		%assign %%cur_z %3 + FixedMul(%6, %%dist)
-		Map_Dist %%cur_x, %%cur_y, %%cur_z
-		%assign %%dist %%dist + result
-		%if result <= CastEpsilon
+		testawayfrom_bb %1, %2, %3, %4, %5, %6
+		%if result
+			%if %5 < 0
+				Ground_Cast %1, %2, %3, %4, %5, %6
+				%if result < 0
+					%assign %%dist -1
+				%else
+					%assign %%dist %%dist + result
+				%endif
+			%else
+				%assign %%dist -1
+			%endif
 			%exitrep
+		%else
+			%assign %%cur_x %1 + FixedMul(%4, %%dist)
+			%assign %%cur_y %2 + FixedMul(%5, %%dist)
+			%assign %%cur_z %3 + FixedMul(%6, %%dist)
+			Map_Dist %%cur_x, %%cur_y, %%cur_z
+			%assign %%dist %%dist + result
+			%if result <= CastEpsilon
+				%exitrep
+			%endif
 		%endif
 		%assign %%StepCounter %%StepCounter + 1
 	%endrep
@@ -358,9 +480,8 @@ BitmapStart:
 
 %assign y LineStart
 %rep LineCount
-	%assign x 0
-	%rep Image_Width
-
+	%assign x RowStart
+	%rep RowCount
 		%assign ro_x MakeFixed(0)
 		%assign ro_y MakeFixed(2)
 		%assign ro_z MakeFixed(7)

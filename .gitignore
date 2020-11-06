@@ -1,0 +1,5 @@
+*.bin
+*.mk
+preview.bmp
+raytrace.bmp
+*.log
