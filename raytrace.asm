@@ -89,8 +89,8 @@ BITMAPINFOHEADER:
 %define FixedDiv(a,b) (((a) * FixedBase) // (b))
 
 %assign FixedMax ((-1) / 2)
-%assign CastEpsilon FixedDiv(1, 20)
-%assign CastEpsilon2 FixedDiv(1, 10)
+%assign CastEpsilon FixedDiv(1, 200)
+%assign CastEpsilon2 FixedDiv(1, 100)
 
 ;==============================================================================
 ; Variables used to store the return value of the macros
@@ -368,7 +368,6 @@ Normalize LightDir_x, LightDir_y, LightDir_z
 
 %macro Map_Dist 3
 	%assign %%Dist_1 %2
-	%assign %%Dist_4 FixedMax
 	%assign result_index 0
 
 	%if Sphere1_Visible
@@ -395,7 +394,7 @@ Normalize LightDir_x, LightDir_y, LightDir_z
 	%assign result FixedMax
 	%if %%Dist_1 < result
 		%assign result %%Dist_1
-		%if ((%1 / (FixedBase / 2)) & 1) ^ ((%3 / (FixedBase / 2)) & 1)
+		%if (((%1) * 2 / FixedBase) & 1) ^ (((%3) * 2 / FixedBase) & 1)
 			%assign result_index 1
 		%else
 			%assign result_index 5
@@ -474,19 +473,16 @@ Normalize LightDir_x, LightDir_y, LightDir_z
 
 %macro Map_Cast 6
 	%assign %%dist 0
-	%assign %%StepCounter 0
+	%assign %%hit 0
 	%rep RayStepCount
 		testawayfrom_bb %1, %2, %3, %4, %5, %6
 		%if result
 			%if %5 < 0
 				Ground_Cast %1, %2, %3, %4, %5, %6
-				%if result < 0
-					%assign %%dist -1
-				%else
+				%if result >= 0
 					%assign %%dist %%dist + result
+					%assign %%hit 1
 				%endif
-			%else
-				%assign %%dist -1
 			%endif
 			%exitrep
 		%else
@@ -496,12 +492,12 @@ Normalize LightDir_x, LightDir_y, LightDir_z
 			Map_Dist %%cur_x, %%cur_y, %%cur_z
 			%assign %%dist %%dist + result
 			%if result <= CastEpsilon
+				%assign %%hit 1
 				%exitrep
 			%endif
 		%endif
-		%assign %%StepCounter %%StepCounter + 1
 	%endrep
-	%if %%StepCounter < RayStepCount
+	%if %%hit != 0
 		%assign result %%dist
 	%else
 		%assign result -1
@@ -531,9 +527,6 @@ Normalize LightDir_x, LightDir_y, LightDir_z
 			%assign %%cast_y %%cro_y + FixedMul(%%crd_y, result)
 			%assign %%cast_z %%cro_z + FixedMul(%%crd_z, result)
 			%assign %%foggy %%foggy + FixedDiv(result, FogDistance)
-			%if %%foggy > FixedBase
-				%assign %%foggy FixedBase
-			%endif
 			Map_Normal %%cast_x, %%cast_y, %%cast_z
 			%assign %%cast_nx result_x
 			%assign %%cast_ny result_y
@@ -561,6 +554,9 @@ Normalize LightDir_x, LightDir_y, LightDir_z
 	%assign result_r FixedMul(result_r, %%mask_r)
 	%assign result_g FixedMul(result_g, %%mask_g)
 	%assign result_b FixedMul(result_b, %%mask_b)
+	%if %%foggy > FixedBase
+		%assign %%foggy FixedBase
+	%endif
 	%assign result_r Mix(result_r, FogColor_r, %%foggy)
 	%assign result_g Mix(result_g, FogColor_g, %%foggy)
 	%assign result_b Mix(result_b, FogColor_b, %%foggy)
