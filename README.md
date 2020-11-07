@@ -21,5 +21,5 @@ For example, set the resolution to 640x480, and set `PIECES` to 64, set `SLICES`
 ## Preview
 When compiling is slowly proceeding, it's able to check the preview of the scene by running `make preview`. The script tries to composite the picture by concatenating the pieces and create a picture file out of them. You can then view `preview.bmp` to have a quick peek of the rendering picture.
 
-# The GLSL Implementation Demo
+# The GLSL Implementation Demo From Shadertoy
 Please check out from Shadertoy: [here](https://www.shadertoy.com/view/3dcfDr)
