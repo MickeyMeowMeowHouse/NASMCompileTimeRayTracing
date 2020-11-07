@@ -517,7 +517,6 @@ Normalize LightDir_x, LightDir_y, LightDir_z
 	%assign %%mask_r FixedBase
 	%assign %%mask_g FixedBase
 	%assign %%mask_b FixedBase
-	%assign %%foggy 0
 	%rep SampleDepth
 		Map_Cast %%cro_x, %%cro_y, %%cro_z, %%crd_x, %%crd_y, %%crd_z
 		%if result < 0
@@ -526,12 +525,18 @@ Normalize LightDir_x, LightDir_y, LightDir_z
 			%assign %%cast_x %%cro_x + FixedMul(%%crd_x, result)
 			%assign %%cast_y %%cro_y + FixedMul(%%crd_y, result)
 			%assign %%cast_z %%cro_z + FixedMul(%%crd_z, result)
-			%assign %%foggy %%foggy + FixedDiv(result, FogDistance)
+			%assign %%foggy FixedDiv(result, FogDistance)
 			Map_Normal %%cast_x, %%cast_y, %%cast_z
 			%assign %%cast_nx result_x
 			%assign %%cast_ny result_y
 			%assign %%cast_nz result_z
 			Map_Color %%cast_x, %%cast_y, %%cast_z
+			%if %%foggy > FixedBase
+				%assign %%foggy FixedBase
+			%endif
+			%assign result_r Mix(result_r, FogColor_r, %%foggy)
+			%assign result_g Mix(result_g, FogColor_g, %%foggy)
+			%assign result_b Mix(result_b, FogColor_b, %%foggy)
 			%assign %%mask_r FixedMul(%%mask_r, result_r)
 			%assign %%mask_g FixedMul(%%mask_g, result_g)
 			%assign %%mask_b FixedMul(%%mask_b, result_b)
@@ -554,12 +559,6 @@ Normalize LightDir_x, LightDir_y, LightDir_z
 	%assign result_r FixedMul(result_r, %%mask_r)
 	%assign result_g FixedMul(result_g, %%mask_g)
 	%assign result_b FixedMul(result_b, %%mask_b)
-	%if %%foggy > FixedBase
-		%assign %%foggy FixedBase
-	%endif
-	%assign result_r Mix(result_r, FogColor_r, %%foggy)
-	%assign result_g Mix(result_g, FogColor_g, %%foggy)
-	%assign result_b Mix(result_b, FogColor_b, %%foggy)
 	Saturate result_r, result_g, result_b
 %endmacro
 
