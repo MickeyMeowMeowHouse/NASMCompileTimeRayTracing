@@ -89,8 +89,8 @@ BITMAPINFOHEADER:
 %define FixedDiv(a,b) (((a) * FixedBase) // (b))
 
 %assign FixedMax ((-1) / 2)
-%assign CastEpsilon FixedDiv(1, 200)
-%assign CastEpsilon2 FixedDiv(1, 100)
+%assign CastEpsilon FixedDiv(1, 100)
+%assign CastEpsilon2 CastEpsilon + CastEpsilon
 
 ;==============================================================================
 ; Variables used to store the return value of the macros
