@@ -1,7 +1,7 @@
 XRES=640
 YRES=480
 PIECES=4
-SLICES=240
+SLICES=96
 NASM=nasm
 NASMFLAGS=-dImage_Width=$(XRES) -dImage_Height=$(YRES)
 
